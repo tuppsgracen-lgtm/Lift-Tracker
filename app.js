@@ -161,7 +161,6 @@
             </button>
           </div>
         </div>
-        <div class="fact-note">${esc(fact.note)} Tap the weight stat to change it.</div>
         <button id="startBtn" class="btn primary block" type="button">Start Workout</button>
       </section>
 
@@ -251,7 +250,7 @@
     return `
       <section class="card">
         <div class="row start">
-          <div><strong>Exercise ${i+1}</strong><div class="small">Choose time or sets/reps.</div></div>
+          <div><strong>Exercise ${i+1}</strong></div>
           <button class="btn danger" type="button" data-remove="${i}">Remove</button>
         </div>
 
@@ -275,7 +274,7 @@
 
         ${e.mode==="reps" ? `
           <label class="checkrow"><input data-field="trackBest" data-i="${i}" type="checkbox" ${e.trackBest?"checked":""}><span>Track best effort / highest weight</span></label>
-        ` : `<div class="small">Timed exercises do not add to pounds moved unless you later choose to give them a rep-based version.</div>`}
+        ` : ``}
       </section>`;
   }
 
@@ -346,7 +345,7 @@
         <button id="finish" class="btn" type="button">Finish</button>
       </div>
       <section class="card">
-        <div class="row start"><div><strong>Exercise Board</strong><div class="small">Tap exercises in the exact order you want to cycle through them.</div></div><span class="badge">${session.selected.length} selected</span></div>
+        <div class="row start"><div><strong>Exercise Board</strong></div><span class="badge">${session.selected.length} selected</span></div>
         <div class="small">${done} of ${total} sets / rounds complete</div>
         <div class="list">
           ${session.workout.exercises.map((e,i)=>boardExercise(e,i)).join("")}
