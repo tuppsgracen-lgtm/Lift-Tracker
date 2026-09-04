@@ -1,4 +1,4 @@
-const CACHE = "daily-lift-v3";
+const CACHE = "daily-lift-v4";
 const ASSETS = [
   "./",
   "./index.html",

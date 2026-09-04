@@ -49,3 +49,10 @@ Daily Lift is a local-first workout planner and tracker designed for installatio
 ## Updating the app
 
 After editing files, commit/upload the changed files to GitHub. When changing cached assets or behavior, bump the cache name in `sw.js` (for example `daily-lift-v1` to `daily-lift-v2`) so installed copies refresh cleanly.
+
+
+## v4 board updates
+
+- Added an Exercise Board heading and overall completed-set count.
+- Exercise icons are shown beside each exercise on the board.
+- Viewport sizing and overscroll behavior were refined so the page only needs normal vertical scrolling when content exceeds the screen.

@@ -470,6 +470,13 @@
         <button id="finish" class="btn" type="button">Finish</button>
       </div>
       <section class="card board-card">
+        <div class="board-heading">
+          <div>
+            <div class="board-title">Exercise Board</div>
+            <div class="small">${done} of ${total} sets / rounds complete</div>
+          </div>
+          <span class="badge">${session.selected.length} selected</span>
+        </div>
         <div class="list board-list">
           ${session.workout.exercises.map((e,i)=>boardExercise(e,i)).join("")}
         </div>
@@ -494,7 +501,7 @@
     return `
       <button class="item board-item ${pos>=0?"selected":""} ${finished?"done":""}" type="button" data-board="${i}">
         <div class="row">
-          <strong>${esc(e.name)}</strong>
+          <div class="board-exercise-name"><span class="board-icon">${esc(e.icon)}</span><strong>${esc(e.name)}</strong></div>
           <span class="small board-progress">${completed}/${e.sets} ${e.mode==="time"?"rounds":"sets"}${finished?" ✓":""}</span>
         </div>
       </button>`;
