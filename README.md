@@ -8,12 +8,14 @@ Daily Lift is a local-first workout planner and tracker designed for installatio
 - Each exercise can be:
   - Sets + reps based, or
   - Timed / rounds based.
-- Pre-plan sets, reps, or time.
+- Pre-plan sets with different rep targets for each set, or plan timed rounds.
 - Enter weight for each completed rep-based set.
-- Optional "Track best effort" for selected exercises.
+- Optional "Track best effort" for selected exercises, including best weight for the current rep target during a workout.
+- Add an optional workout description that appears in its own card during training.
 - Workout board lets you select exercises in the exact order you want.
 - Selected exercises alternate set-by-set.
 - When every set/round in the selected exercise group is finished, the app automatically returns to the exercise board.
+- Best Efforts shows the highest weight recorded for each tracked exercise.
 - End-of-workout summary shows duration, sets/rounds, and pounds moved.
 - Home screen tracks:
   - Number of completed workouts

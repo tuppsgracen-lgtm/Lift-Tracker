@@ -11,32 +11,36 @@
     lifetimeVolume: 0,
     topWorkouts: [],
     bests: {},
+    repBests: {},
     workouts: [
       {
         id: cryptoRandomId(),
         name: "Push",
+        description: "",
         exercises: [
-          {id:cryptoRandomId(), name:"Bench Press", icon:"🏋️", mode:"reps", sets:3, reps:6, seconds:30, trackBest:true},
-          {id:cryptoRandomId(), name:"Incline DB Press", icon:"💪", mode:"reps", sets:3, reps:8, seconds:30, trackBest:true},
-          {id:cryptoRandomId(), name:"Plank", icon:"⏱️", mode:"time", sets:3, reps:1, seconds:30, trackBest:false}
+          {id:cryptoRandomId(), name:"Bench Press", icon:"🏋️", mode:"reps", sets:3, reps:6, repTargets:[6,6,6], seconds:30, trackBest:true},
+          {id:cryptoRandomId(), name:"Incline DB Press", icon:"💪", mode:"reps", sets:3, reps:8, repTargets:[8,8,8], seconds:30, trackBest:true},
+          {id:cryptoRandomId(), name:"Plank", icon:"⏱️", mode:"time", sets:3, reps:1, repTargets:[1,1,1], seconds:30, trackBest:false}
         ]
       },
       {
         id: cryptoRandomId(),
         name: "Pull",
+        description: "",
         exercises: [
-          {id:cryptoRandomId(), name:"Lat Pulldown", icon:"🧗", mode:"reps", sets:3, reps:8, seconds:30, trackBest:true},
-          {id:cryptoRandomId(), name:"Seated Row", icon:"🚣", mode:"reps", sets:3, reps:8, seconds:30, trackBest:true},
-          {id:cryptoRandomId(), name:"Dead Hang", icon:"⏱️", mode:"time", sets:3, reps:1, seconds:45, trackBest:false}
+          {id:cryptoRandomId(), name:"Lat Pulldown", icon:"🧗", mode:"reps", sets:3, reps:8, repTargets:[8,8,8], seconds:30, trackBest:true},
+          {id:cryptoRandomId(), name:"Seated Row", icon:"🚣", mode:"reps", sets:3, reps:8, repTargets:[8,8,8], seconds:30, trackBest:true},
+          {id:cryptoRandomId(), name:"Dead Hang", icon:"⏱️", mode:"time", sets:3, reps:1, repTargets:[1,1,1], seconds:45, trackBest:false}
         ]
       },
       {
         id: cryptoRandomId(),
         name: "Legs",
+        description: "",
         exercises: [
-          {id:cryptoRandomId(), name:"Squat", icon:"🦵", mode:"reps", sets:3, reps:5, seconds:30, trackBest:true},
-          {id:cryptoRandomId(), name:"Romanian Deadlift", icon:"🏋️", mode:"reps", sets:3, reps:8, seconds:30, trackBest:true},
-          {id:cryptoRandomId(), name:"Wall Sit", icon:"⏱️", mode:"time", sets:3, reps:1, seconds:40, trackBest:false}
+          {id:cryptoRandomId(), name:"Squat", icon:"🦵", mode:"reps", sets:3, reps:5, repTargets:[5,5,5], seconds:30, trackBest:true},
+          {id:cryptoRandomId(), name:"Romanian Deadlift", icon:"🏋️", mode:"reps", sets:3, reps:8, repTargets:[8,8,8], seconds:30, trackBest:true},
+          {id:cryptoRandomId(), name:"Wall Sit", icon:"⏱️", mode:"time", sets:3, reps:1, repTargets:[1,1,1], seconds:40, trackBest:false}
         ]
       }
     ]
@@ -66,13 +70,35 @@
   function loadState(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
-      if(!raw) return structuredCloneSafe(defaultState);
+      if(!raw) return normalizeState(structuredCloneSafe(defaultState));
       const parsed = JSON.parse(raw);
-      if(!parsed || !Array.isArray(parsed.workouts)) return structuredCloneSafe(defaultState);
-      return {...structuredCloneSafe(defaultState), ...parsed};
+      if(!parsed || !Array.isArray(parsed.workouts)) return normalizeState(structuredCloneSafe(defaultState));
+      return normalizeState({...structuredCloneSafe(defaultState), ...parsed});
     }catch{
-      return structuredCloneSafe(defaultState);
+      return normalizeState(structuredCloneSafe(defaultState));
     }
+  }
+
+  function normalizeState(next){
+    if(!next.repBests || typeof next.repBests!=="object") next.repBests={};
+    if(!next.bests || typeof next.bests!=="object") next.bests={};
+    next.workouts.forEach(w=>{
+      if(typeof w.description!=="string") w.description="";
+      w.exercises.forEach(ex=>{
+        ex.sets=Math.max(1,Math.min(20,Number(ex.sets)||1));
+        const fallback=Math.max(1,Math.min(100,Number(ex.reps)||1));
+        if(!Array.isArray(ex.repTargets)) ex.repTargets=Array(ex.sets).fill(fallback);
+        ex.repTargets=Array.from({length:ex.sets},(_,i)=>Math.max(1,Math.min(100,Number(ex.repTargets[i])||fallback)));
+        ex.reps=ex.repTargets[0]||fallback;
+        const oldBest=Number(next.bests?.[ex.id])||0;
+        if(oldBest>0){
+          if(!next.repBests[ex.id] || typeof next.repBests[ex.id]!=="object") next.repBests[ex.id]={};
+          const key=String(ex.reps);
+          if(!Number(next.repBests[ex.id][key])) next.repBests[ex.id][key]=oldBest;
+        }
+      });
+    });
+    return next;
   }
 
   function saveState(){
@@ -97,13 +123,26 @@
     return session?.startedAt ? Math.floor((Date.now()-session.startedAt)/1000) : 0;
   }
 
+  function repTarget(ex,si){
+    const fallback=Math.max(1,Number(ex.reps)||1);
+    return Math.max(1,Number(ex.repTargets?.[si])||fallback);
+  }
+
+  function overallBest(exerciseId){
+    return Number(state.bests[exerciseId])||0;
+  }
+
+  function bestForReps(exerciseId,reps){
+    return Number(state.repBests?.[exerciseId]?.[String(reps)])||0;
+  }
+
   function currentVolume(){
     if(!session) return 0;
     let total=0;
     session.workout.exercises.forEach((ex,ei)=>{
       if(ex.mode !== "reps") return;
-      session.logs[ei].forEach(log=>{
-        if(log.done) total += (Number(log.weight)||0) * ex.reps;
+      session.logs[ei].forEach((log,si)=>{
+        if(log.done) total += (Number(log.weight)||0) * repTarget(ex,si);
       });
     });
     return total;
@@ -210,7 +249,7 @@
 
   function openBuilder(index){
     builderIndex = index;
-    builderDraft = index===null ? {id:cryptoRandomId(),name:"New Workout",exercises:[]} : structuredCloneSafe(state.workouts[index]);
+    builderDraft = index===null ? {id:cryptoRandomId(),name:"New Workout",description:"",exercises:[]} : structuredCloneSafe(state.workouts[index]);
     screen="builder"; render();
   }
 
@@ -219,6 +258,7 @@
       <div class="topbar"><button id="back" class="btn" type="button">← Workouts</button><div class="screen-title">Workout Builder</div><button id="save" class="btn primary" type="button">Save</button></div>
       <section class="card">
         <label><span>Workout name</span><input id="workoutName" maxlength="40" value="${esc(builderDraft.name)}"></label>
+        <label class="field-gap"><span>Workout description</span><textarea id="workoutDescription" maxlength="300" placeholder="Optional workout notes">${esc(builderDraft.description||"")}</textarea></label>
       </section>
       <div id="exerciseBuilder" class="list">
         ${builderDraft.exercises.map((e,i)=>exerciseEditor(e,i)).join("")}
@@ -227,8 +267,10 @@
     `;
 
     document.getElementById("back").addEventListener("click",()=>{screen="workouts";render();});
+    document.getElementById("workoutName").addEventListener("input",e=>{builderDraft.name=e.target.value;});
+    document.getElementById("workoutDescription").addEventListener("input",e=>{builderDraft.description=e.target.value;});
     document.getElementById("addEx").addEventListener("click",()=>{
-      builderDraft.exercises.push({id:cryptoRandomId(),name:"New Exercise",icon:"🏋️",mode:"reps",sets:3,reps:8,seconds:30,trackBest:false});
+      builderDraft.exercises.push({id:cryptoRandomId(),name:"New Exercise",icon:"🏋️",mode:"reps",sets:3,reps:8,repTargets:[8,8,8],seconds:30,trackBest:false});
       renderBuilder();
     });
     document.getElementById("save").addEventListener("click", saveBuilder);
@@ -237,6 +279,9 @@
       const i=Number(b.dataset.mode), val=b.dataset.value;
       builderDraft.exercises[i].mode=val;
       if(val==="time") builderDraft.exercises[i].trackBest=false;
+      if(val==="reps" && !Array.isArray(builderDraft.exercises[i].repTargets)){
+        builderDraft.exercises[i].repTargets=Array(builderDraft.exercises[i].sets).fill(builderDraft.exercises[i].reps||8);
+      }
       renderBuilder();
     }));
     app.querySelectorAll("[data-remove]").forEach(b=>b.addEventListener("click",()=>{
@@ -247,6 +292,7 @@
   }
 
   function exerciseEditor(e,i){
+    const targets=Array.from({length:e.sets},(_,si)=>repTarget(e,si));
     return `
       <section class="card">
         <div class="row start">
@@ -267,12 +313,15 @@
 
         <div class="form-grid">
           <label><span>${e.mode==="reps"?"Sets":"Rounds"}</span><input data-field="sets" data-i="${i}" type="number" inputmode="numeric" min="1" max="20" value="${e.sets}"></label>
-          ${e.mode==="reps"
-            ? `<label><span>Reps</span><input data-field="reps" data-i="${i}" type="number" inputmode="numeric" min="1" max="100" value="${e.reps}"></label>`
-            : `<label><span>Seconds</span><input data-field="seconds" data-i="${i}" type="number" inputmode="numeric" min="5" max="1800" value="${e.seconds}"></label>`}
+          ${e.mode==="time"
+            ? `<label><span>Seconds</span><input data-field="seconds" data-i="${i}" type="number" inputmode="numeric" min="5" max="1800" value="${e.seconds}"></label>`
+            : `<div></div>`}
         </div>
 
         ${e.mode==="reps" ? `
+          <div class="set-reps-grid">
+            ${targets.map((r,si)=>`<label><span>Set ${si+1} reps</span><input data-rep-target="${si}" data-i="${i}" type="number" inputmode="numeric" min="1" max="100" value="${r}"></label>`).join("")}
+          </div>
           <label class="checkrow"><input data-field="trackBest" data-i="${i}" type="checkbox" ${e.trackBest?"checked":""}><span>Track best effort / highest weight</span></label>
         ` : ``}
       </section>`;
@@ -280,29 +329,47 @@
 
   function bindBuilderInputs(){
     app.querySelectorAll("[data-field]").forEach(el=>{
-      const event = el.type==="checkbox" ? "change" : "input";
+      const event = (el.type==="checkbox" || el.dataset.field==="sets") ? "change" : "input";
       el.addEventListener(event,()=>{
         const i=Number(el.dataset.i), field=el.dataset.field, ex=builderDraft.exercises[i];
         if(field==="trackBest"){ ex[field]=el.checked; return; }
-        if(["sets","reps","seconds"].includes(field)){
-          const min=field==="seconds"?5:1, max=field==="seconds"?1800:(field==="sets"?20:100);
-          ex[field]=Math.max(min,Math.min(max,Number(el.value)||min));
+        if(["sets","seconds"].includes(field)){
+          const min=field==="seconds"?5:1, max=field==="seconds"?1800:20;
+          const next=Math.max(min,Math.min(max,Number(el.value)||min));
+          ex[field]=next;
+          if(field==="sets"){
+            const fallback=repTarget(ex,Math.max(0,(ex.repTargets?.length||1)-1));
+            ex.repTargets=Array.from({length:next},(_,si)=>Math.max(1,Number(ex.repTargets?.[si])||fallback));
+            renderBuilder();
+          }
         }else{
           ex[field]=el.value;
         }
+      });
+    });
+    app.querySelectorAll("[data-rep-target]").forEach(el=>{
+      el.addEventListener("input",()=>{
+        const i=Number(el.dataset.i), si=Number(el.dataset.repTarget), ex=builderDraft.exercises[i];
+        if(!Array.isArray(ex.repTargets)) ex.repTargets=Array(ex.sets).fill(ex.reps||8);
+        ex.repTargets[si]=Math.max(1,Math.min(100,Number(el.value)||1));
+        ex.reps=ex.repTargets[0];
       });
     });
   }
 
   function saveBuilder(){
     builderDraft.name=(document.getElementById("workoutName").value||"Workout").trim().slice(0,40) || "Workout";
+    builderDraft.description=(document.getElementById("workoutDescription")?.value||"").trim().slice(0,300);
     if(!builderDraft.exercises.length){toast("Add at least one exercise.");return;}
     builderDraft.exercises.forEach(ex=>{
       ex.name=(ex.name||"Exercise").trim().slice(0,50)||"Exercise";
       ex.icon=(ex.icon||"🏋️").slice(0,4);
       ex.sets=Math.max(1,Math.min(20,Number(ex.sets)||1));
-      if(ex.mode==="reps") ex.reps=Math.max(1,Math.min(100,Number(ex.reps)||1));
-      else ex.seconds=Math.max(5,Math.min(1800,Number(ex.seconds)||30));
+      if(ex.mode==="reps"){
+        const fallback=Math.max(1,Math.min(100,Number(ex.reps)||8));
+        ex.repTargets=Array.from({length:ex.sets},(_,si)=>Math.max(1,Math.min(100,Number(ex.repTargets?.[si])||fallback)));
+        ex.reps=ex.repTargets[0];
+      }else ex.seconds=Math.max(5,Math.min(1800,Number(ex.seconds)||30));
     });
     if(builderIndex===null) state.workouts.push(builderDraft);
     else state.workouts[builderIndex]=builderDraft;
@@ -368,8 +435,9 @@
     const completed=session.logs[i].filter(x=>x.done).length;
     const finished=completed===e.sets;
     const pos=session.selected.indexOf(i);
-    const desc=e.mode==="reps"?`${e.sets} × ${e.reps} reps`:`${e.sets} × ${e.seconds} sec`;
-    const best=state.bests[e.id];
+    const repsText=e.mode==="reps"?Array.from({length:e.sets},(_,si)=>repTarget(e,si)).join(" / "):"";
+    const desc=e.mode==="reps"?`${e.sets} sets · ${repsText} reps`:`${e.sets} × ${e.seconds} sec`;
+    const best=overallBest(e.id);
     return `
       <button class="item ${pos>=0?"selected":""} ${finished?"done":""}" type="button" data-board="${i}">
         <div class="row">
@@ -413,28 +481,32 @@
     const nei=session.group[nextPointer];
     const ne=session.workout.exercises[nei];
     const nsi=nextIncomplete(nei);
-
-    const best=state.bests[e.id];
+    const currentReps=e.mode==="reps"?repTarget(e,si):0;
+    const nextReps=ne.mode==="reps"?repTarget(ne,nsi):0;
+    const repBest=e.mode==="reps"?bestForReps(e.id,currentReps):0;
+    const workoutDescription=(session.workout.description||"").trim();
     app.innerHTML=`
       <div class="topbar"><button id="backBoard" class="btn" type="button">← Board</button><div class="small">${session.groupPointer+1} of ${session.group.length}</div><div id="sessionClock" class="small">${fmtTime(sessionElapsed())}</div></div>
       <section class="card center">
         <div class="hero-icon">${esc(e.icon)}</div>
         <div class="active-name">${esc(e.name)}</div>
-        <div class="active-detail">${e.mode==="reps"?`Set ${si+1} of ${e.sets} · ${e.reps} reps`:`Round ${si+1} of ${e.sets} · ${e.seconds} seconds`}</div>
-
-        ${e.mode==="reps"&&e.trackBest?`<div class="best"><div class="small">BEST EFFORT</div><strong>${best?best+" lb":"No best yet"}</strong></div>`:""}
+        <div class="active-detail">${e.mode==="reps"?`Set ${si+1} of ${e.sets} · ${currentReps} reps`:`Round ${si+1} of ${e.sets} · ${e.seconds} seconds`}</div>
 
         ${e.mode==="reps"
-          ? `<label class="center"><span>Weight used</span><input id="weightInput" inputmode="decimal" min="0" max="5000" placeholder="Enter weight"></label>`
+          ? `<label class="center weight-entry"><span>Weight used</span><input id="weightInput" inputmode="decimal" min="0" max="5000" placeholder="Enter weight"></label>`
           : `<div><div id="timerDisplay" class="timer">${e.seconds}</div><div class="small">seconds</div><button id="timerBtn" class="btn block" type="button">Start Timer</button></div>`}
 
-        <button id="completeSet" class="btn primary block" type="button">${e.mode==="reps"?"Complete Set":"Complete Round"}</button>
+        <button id="completeSet" class="btn primary block complete-set-btn" type="button">${e.mode==="reps"?"Complete Set":"Complete Round"}</button>
       </section>
 
-      <section class="card">
+      ${workoutDescription?`<section class="card info-bubble"><div class="small">WORKOUT DESCRIPTION</div><div>${esc(workoutDescription)}</div></section>`:""}
+
+      <section class="card info-bubble">
         <div class="small">UP NEXT</div>
-        <div class="row start"><span class="icon">${esc(ne.icon)}</span><div><strong>${esc(ne.name)}</strong><div class="small">${ne.mode==="reps"?`Set ${nsi+1} · ${ne.reps} reps`:`Round ${nsi+1} · ${ne.seconds} sec`}</div></div></div>
-      </section>`;
+        <div class="row start"><span class="icon">${esc(ne.icon)}</span><div><strong>${esc(ne.name)}</strong><div class="small">${ne.mode==="reps"?`Set ${nsi+1} · ${nextReps} reps`:`Round ${nsi+1} · ${ne.seconds} sec`}</div></div></div>
+      </section>
+
+      ${e.mode==="reps"&&e.trackBest?`<section class="card info-bubble"><div class="small">BEST FOR ${currentReps} REPS</div><strong>${repBest?repBest+" lb":"No best yet"}</strong></section>`:""}`;
 
     document.getElementById("backBoard").addEventListener("click",()=>{
       stopCountdown(); session.selected=[]; screen="board"; render();
@@ -471,8 +543,13 @@
     session.logs[ei][si]={done:true,weight};
 
     if(e.mode==="reps" && e.trackBest && weight>0){
-      const current=Number(state.bests[e.id])||0;
+      const reps=repTarget(e,si);
+      const current=overallBest(e.id);
       if(weight>current) state.bests[e.id]=weight;
+      if(!state.repBests[e.id] || typeof state.repBests[e.id]!=="object") state.repBests[e.id]={};
+      const repKey=String(reps);
+      const currentRepBest=Number(state.repBests[e.id][repKey])||0;
+      if(weight>currentRepBest) state.repBests[e.id][repKey]=weight;
     }
 
     if(nextIncomplete(ei)<0){
@@ -530,7 +607,7 @@
   function renderRecords(){
     const rows=[];
     state.workouts.forEach(w=>w.exercises.forEach(e=>{
-      if(e.mode==="reps" && e.trackBest) rows.push({workout:w.name,exercise:e,best:Number(state.bests[e.id])||0});
+      if(e.mode==="reps" && e.trackBest) rows.push({workout:w.name,exercise:e,best:overallBest(e.id)});
     }));
     app.innerHTML=`
       <div class="topbar"><button id="back" class="btn" type="button">← Home</button><div class="screen-title">Best Efforts</div><span></span></div>

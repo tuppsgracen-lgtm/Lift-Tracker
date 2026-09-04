@@ -70,3 +70,26 @@ label span{display:block;margin-bottom:6px}
   .stats{grid-template-columns:1fr 1fr}
   .summary-grid{grid-template-columns:1fr 1fr 1fr}
 }
+
+textarea{
+  width:100%;
+  min-height:92px;
+  resize:vertical;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:12px;
+  color:var(--text);
+  padding:11px 12px;
+  font:inherit;
+  font-size:16px;
+  line-height:1.4;
+}
+.field-gap{margin-top:16px}
+.set-reps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.weight-entry{margin-top:24px;margin-bottom:18px}
+.complete-set-btn{margin-top:8px}
+.info-bubble{padding:15px 16px}
+.info-bubble>.small{margin-bottom:8px;font-weight:750;letter-spacing:.04em}
+@media(max-width:420px){
+  .set-reps-grid{grid-template-columns:repeat(2,1fr)}
+}
