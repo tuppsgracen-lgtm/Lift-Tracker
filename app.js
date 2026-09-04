@@ -12,6 +12,7 @@
     topWorkouts: [],
     bests: {},
     repBests: {},
+    settings: {theme:"dark", units:"lb"},
     workouts: [
       {
         id: cryptoRandomId(),
@@ -82,9 +83,14 @@
   function normalizeState(next){
     if(!next.repBests || typeof next.repBests!=="object") next.repBests={};
     if(!next.bests || typeof next.bests!=="object") next.bests={};
+    if(!next.settings || typeof next.settings!=="object") next.settings={theme:"dark",units:"lb"};
+    if(!["dark","light","system"].includes(next.settings.theme)) next.settings.theme="dark";
+    if(!["lb","kg"].includes(next.settings.units)) next.settings.units="lb";
     next.workouts.forEach(w=>{
       if(typeof w.description!=="string") w.description="";
       w.exercises.forEach(ex=>{
+        if(typeof ex.description!=="string") ex.description="";
+        if(typeof ex.sameReps!=="boolean") ex.sameReps=false;
         ex.sets=Math.max(1,Math.min(20,Number(ex.sets)||1));
         const fallback=Math.max(1,Math.min(100,Number(ex.reps)||1));
         if(!Array.isArray(ex.repTargets)) ex.repTargets=Array(ex.sets).fill(fallback);
@@ -112,6 +118,30 @@
 
   function esc(s){
     return String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function units(){ return state.settings?.units==="kg" ? "kg" : "lb"; }
+
+  function fromLb(value){
+    const n=Number(value)||0;
+    return units()==="kg" ? n/2.2046226218 : n;
+  }
+
+  function toLb(value){
+    const n=Number(value)||0;
+    return units()==="kg" ? n*2.2046226218 : n;
+  }
+
+  function fmtWeight(value){
+    const converted=fromLb(value);
+    const rounded=units()==="kg" ? Math.round(converted*10)/10 : Math.round(converted*10)/10;
+    return `${rounded.toLocaleString()} ${units()}`;
+  }
+
+  function applyTheme(){
+    const pref=state.settings?.theme||"dark";
+    if(pref==="system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme",pref);
   }
 
   function fmtTime(sec){
@@ -150,6 +180,7 @@
 
   function render(){
     stopCountdown();
+    applyTheme();
     if(screen==="home") renderHome();
     else if(screen==="choose") renderChoose();
     else if(screen==="workouts") renderWorkouts();
@@ -158,18 +189,19 @@
     else if(screen==="active") renderActive();
     else if(screen==="records") renderRecords();
     else if(screen==="complete") renderComplete();
+    else if(screen==="settings") renderSettings();
   }
 
   function topThreeRows(){
     const rows = [...state.topWorkouts].sort((a,b)=>b.volume-a.volume).slice(0,3);
     if(!rows.length) return `<div class="item muted">Complete a workout to start your leaderboard.</div>`;
-    return rows.map(x=>`<div class="item row"><span>${esc(x.name)}</span><strong>${Math.round(x.volume).toLocaleString()} lb</strong></div>`).join("");
+    return rows.map(x=>`<div class="item row"><span>${esc(x.name)}</span><strong>${fmtWeight(x.volume)}</strong></div>`).join("");
   }
 
   function weightFact(){
     const x = state.lifetimeVolume;
     const facts = [
-      {value:Math.round(x).toLocaleString(), label:"lb moved ↻", note:"Your lifetime training volume."},
+      {value:(units()==="kg"?(x/2.2046226218).toFixed(1):Math.round(x).toLocaleString()), label:`${units()} moved ↻`, note:""},
       {value:(x/2000).toFixed(1), label:"US tons ↻", note:"Equivalent to 2,000 lb US tons."},
       {value:(x/3300).toFixed(1), label:"cars ↻", note:"Approx. 3,300 lb passenger cars."},
       {value:(x/12000).toFixed(1), label:"elephants ↻", note:"Approx. 12,000 lb adult elephants."},
@@ -204,19 +236,21 @@
       </section>
 
       <section class="card">
-        <div class="row"><strong>Top 3 Workouts</strong><span class="small">Most weight moved</span></div>
+        <div class="row"><strong>Top 3 Workouts</strong></div>
         <div class="list top3">${topThreeRows()}</div>
       </section>
 
-      <div class="grid2">
+      <div class="home-actions">
         <button id="manageBtn" class="btn" type="button">Manage Workouts</button>
         <button id="recordsBtn" class="btn" type="button">Best Efforts</button>
+        <button id="settingsBtn" class="btn" type="button">Settings</button>
       </div>
     `;
     document.getElementById("weightFactBtn").addEventListener("click",()=>{factIndex=(factIndex+1)%6;renderHome();});
     document.getElementById("startBtn").addEventListener("click",()=>{screen="choose";render();});
     document.getElementById("manageBtn").addEventListener("click",()=>{screen="workouts";render();});
     document.getElementById("recordsBtn").addEventListener("click",()=>{screen="records";render();});
+    document.getElementById("settingsBtn").addEventListener("click",()=>{screen="settings";render();});
   }
 
   function renderChoose(){
@@ -225,7 +259,7 @@
       <div class="list">
       ${state.workouts.map((w,i)=>`
         <button class="item row" type="button" data-pick="${i}">
-          <span><strong>${esc(w.name)}</strong><span class="small">${w.exercises.length} exercises</span></span><span>›</span>
+          <span class="workout-choice-text"><strong>${esc(w.name)}</strong><span class="small">${w.exercises.length} exercises</span></span><span>›</span>
         </button>`).join("")}
       </div>`;
     document.getElementById("back").addEventListener("click",()=>{screen="home";render();});
@@ -270,7 +304,7 @@
     document.getElementById("workoutName").addEventListener("input",e=>{builderDraft.name=e.target.value;});
     document.getElementById("workoutDescription").addEventListener("input",e=>{builderDraft.description=e.target.value;});
     document.getElementById("addEx").addEventListener("click",()=>{
-      builderDraft.exercises.push({id:cryptoRandomId(),name:"New Exercise",icon:"🏋️",mode:"reps",sets:3,reps:8,repTargets:[8,8,8],seconds:30,trackBest:false});
+      builderDraft.exercises.push({id:cryptoRandomId(),name:"New Exercise",description:"",icon:"🏋️",mode:"reps",sets:3,reps:8,repTargets:[8,8,8],sameReps:false,seconds:30,trackBest:false});
       renderBuilder();
     });
     document.getElementById("save").addEventListener("click", saveBuilder);
@@ -304,8 +338,9 @@
           <label><span>Name</span><input data-field="name" data-i="${i}" maxlength="50" value="${esc(e.name)}"></label>
           <label><span>Icon</span><input data-field="icon" data-i="${i}" maxlength="4" value="${esc(e.icon)}"></label>
         </div>
+        <label class="field-gap"><span>Exercise description</span><textarea data-field="description" data-i="${i}" maxlength="300" placeholder="Optional lift notes">${esc(e.description||"")}</textarea></label>
 
-        <div class="small">Exercise type</div>
+        <div class="small section-label">Exercise type</div>
         <div class="segmented">
           <button type="button" class="btn ${e.mode==="reps"?"active":""}" data-mode="${i}" data-value="reps">Sets + Reps</button>
           <button type="button" class="btn ${e.mode==="time"?"active":""}" data-mode="${i}" data-value="time">Timed</button>
@@ -319,9 +354,10 @@
         </div>
 
         ${e.mode==="reps" ? `
-          <div class="set-reps-grid">
-            ${targets.map((r,si)=>`<label><span>Set ${si+1} reps</span><input data-rep-target="${si}" data-i="${i}" type="number" inputmode="numeric" min="1" max="100" value="${r}"></label>`).join("")}
-          </div>
+          <label class="checkrow"><input data-same-reps="${i}" type="checkbox" ${e.sameReps?"checked":""}><span>All sets have the same reps</span></label>
+          ${e.sameReps
+            ? `<label class="field-gap"><span>Reps for every set</span><input data-all-reps="${i}" type="number" inputmode="numeric" min="1" max="100" value="${targets[0]}"></label>`
+            : `<div class="set-reps-grid">${targets.map((r,si)=>`<label><span>Set ${si+1} reps</span><input data-rep-target="${si}" data-i="${i}" type="number" inputmode="numeric" min="1" max="100" value="${r}"></label>`).join("")}</div>`}
           <label class="checkrow"><input data-field="trackBest" data-i="${i}" type="checkbox" ${e.trackBest?"checked":""}><span>Track best effort / highest weight</span></label>
         ` : ``}
       </section>`;
@@ -355,6 +391,26 @@
         ex.reps=ex.repTargets[0];
       });
     });
+    app.querySelectorAll("[data-same-reps]").forEach(el=>{
+      el.addEventListener("change",()=>{
+        const i=Number(el.dataset.sameReps), ex=builderDraft.exercises[i];
+        ex.sameReps=el.checked;
+        if(ex.sameReps){
+          const r=repTarget(ex,0);
+          ex.repTargets=Array(ex.sets).fill(r);
+          ex.reps=r;
+        }
+        renderBuilder();
+      });
+    });
+    app.querySelectorAll("[data-all-reps]").forEach(el=>{
+      el.addEventListener("input",()=>{
+        const i=Number(el.dataset.allReps), ex=builderDraft.exercises[i];
+        const r=Math.max(1,Math.min(100,Number(el.value)||1));
+        ex.reps=r;
+        ex.repTargets=Array(ex.sets).fill(r);
+      });
+    });
   }
 
   function saveBuilder(){
@@ -364,10 +420,12 @@
     builderDraft.exercises.forEach(ex=>{
       ex.name=(ex.name||"Exercise").trim().slice(0,50)||"Exercise";
       ex.icon=(ex.icon||"🏋️").slice(0,4);
+      ex.description=(ex.description||"").trim().slice(0,300);
+      ex.sameReps=Boolean(ex.sameReps);
       ex.sets=Math.max(1,Math.min(20,Number(ex.sets)||1));
       if(ex.mode==="reps"){
         const fallback=Math.max(1,Math.min(100,Number(ex.reps)||8));
-        ex.repTargets=Array.from({length:ex.sets},(_,si)=>Math.max(1,Math.min(100,Number(ex.repTargets?.[si])||fallback)));
+        ex.repTargets=ex.sameReps ? Array(ex.sets).fill(fallback) : Array.from({length:ex.sets},(_,si)=>Math.max(1,Math.min(100,Number(ex.repTargets?.[si])||fallback)));
         ex.reps=ex.repTargets[0];
       }else ex.seconds=Math.max(5,Math.min(1800,Number(ex.seconds)||30));
     });
@@ -411,13 +469,11 @@
         <div class="center"><div class="screen-title">${esc(session.workout.name)}</div><div id="sessionClock" class="small">${fmtTime(sessionElapsed())}</div></div>
         <button id="finish" class="btn" type="button">Finish</button>
       </div>
-      <section class="card">
-        <div class="row start"><div><strong>Exercise Board</strong></div><span class="badge">${session.selected.length} selected</span></div>
-        <div class="small">${done} of ${total} sets / rounds complete</div>
-        <div class="list">
+      <section class="card board-card">
+        <div class="list board-list">
           ${session.workout.exercises.map((e,i)=>boardExercise(e,i)).join("")}
         </div>
-        <button id="doSelected" class="btn primary block" type="button" ${session.selected.length?"":"disabled"}>${session.selected.length?`Do ${session.selected.length} Selected Exercise${session.selected.length>1?"s":""}`:"Select Exercises First"}</button>
+        <button id="doSelected" class="btn primary block board-action" type="button" ${session.selected.length?"":"disabled"}>${session.selected.length?`Do ${session.selected.length} Selected Exercise${session.selected.length>1?"s":""}`:"Select Exercises First"}</button>
       </section>`;
     document.getElementById("exit").addEventListener("click",()=>{endSessionClock();session=null;screen="home";render();});
     document.getElementById("finish").addEventListener("click", finishSession);
@@ -435,20 +491,11 @@
     const completed=session.logs[i].filter(x=>x.done).length;
     const finished=completed===e.sets;
     const pos=session.selected.indexOf(i);
-    const repsText=e.mode==="reps"?Array.from({length:e.sets},(_,si)=>repTarget(e,si)).join(" / "):"";
-    const desc=e.mode==="reps"?`${e.sets} sets · ${repsText} reps`:`${e.sets} × ${e.seconds} sec`;
-    const best=overallBest(e.id);
     return `
-      <button class="item ${pos>=0?"selected":""} ${finished?"done":""}" type="button" data-board="${i}">
+      <button class="item board-item ${pos>=0?"selected":""} ${finished?"done":""}" type="button" data-board="${i}">
         <div class="row">
-          <div class="row start">
-            <span class="icon">${esc(e.icon)}</span>
-            <div>
-              <div class="exercise-title">${esc(e.name)} <span class="badge">${e.mode==="reps"?"REPS":"TIME"}</span></div>
-              <div class="small">${completed}/${e.sets} complete · ${desc}${e.trackBest?` · Best ${best?best+" lb":"—"}`:""}</div>
-            </div>
-          </div>
-          <div>${finished?"✅":pos>=0?`<span class="group-order">#${pos+1}</span>`:"○"}</div>
+          <strong>${esc(e.name)}</strong>
+          <span class="small board-progress">${completed}/${e.sets} ${e.mode==="time"?"rounds":"sets"}${finished?" ✓":""}</span>
         </div>
       </button>`;
   }
@@ -485,6 +532,7 @@
     const nextReps=ne.mode==="reps"?repTarget(ne,nsi):0;
     const repBest=e.mode==="reps"?bestForReps(e.id,currentReps):0;
     const workoutDescription=(session.workout.description||"").trim();
+    const exerciseDescription=(e.description||"").trim();
     app.innerHTML=`
       <div class="topbar"><button id="backBoard" class="btn" type="button">← Board</button><div class="small">${session.groupPointer+1} of ${session.group.length}</div><div id="sessionClock" class="small">${fmtTime(sessionElapsed())}</div></div>
       <section class="card center">
@@ -493,7 +541,7 @@
         <div class="active-detail">${e.mode==="reps"?`Set ${si+1} of ${e.sets} · ${currentReps} reps`:`Round ${si+1} of ${e.sets} · ${e.seconds} seconds`}</div>
 
         ${e.mode==="reps"
-          ? `<label class="center weight-entry"><span>Weight used</span><input id="weightInput" inputmode="decimal" min="0" max="5000" placeholder="Enter weight"></label>`
+          ? `<label class="center weight-entry"><span>Weight used (${units()})</span><input id="weightInput" inputmode="decimal" min="0" max="5000" placeholder="Enter weight"></label>`
           : `<div><div id="timerDisplay" class="timer">${e.seconds}</div><div class="small">seconds</div><button id="timerBtn" class="btn block" type="button">Start Timer</button></div>`}
 
         <button id="completeSet" class="btn primary block complete-set-btn" type="button">${e.mode==="reps"?"Complete Set":"Complete Round"}</button>
@@ -506,7 +554,9 @@
         <div class="row start"><span class="icon">${esc(ne.icon)}</span><div><strong>${esc(ne.name)}</strong><div class="small">${ne.mode==="reps"?`Set ${nsi+1} · ${nextReps} reps`:`Round ${nsi+1} · ${ne.seconds} sec`}</div></div></div>
       </section>
 
-      ${e.mode==="reps"&&e.trackBest?`<section class="card info-bubble"><div class="small">BEST FOR ${currentReps} REPS</div><strong>${repBest?repBest+" lb":"No best yet"}</strong></section>`:""}`;
+      ${e.mode==="reps"&&e.trackBest?`<section class="card info-bubble"><div class="small">BEST FOR ${currentReps} REPS</div><strong>${repBest?fmtWeight(repBest):"No best yet"}</strong></section>`:""}
+
+      ${exerciseDescription?`<section class="card info-bubble"><div class="small">EXERCISE DESCRIPTION</div><div>${esc(exerciseDescription)}</div></section>`:""}`;
 
     document.getElementById("backBoard").addEventListener("click",()=>{
       stopCountdown(); session.selected=[]; screen="board"; render();
@@ -538,7 +588,7 @@
   function completeCurrent(ei,e,si){
     let weight=0;
     if(e.mode==="reps"){
-      weight=Math.max(0,Math.min(5000,Number(document.getElementById("weightInput").value)||0));
+      weight=Math.max(0,Math.min(11023, toLb(Number(document.getElementById("weightInput").value)||0)));
     }
     session.logs[ei][si]={done:true,weight};
 
@@ -597,7 +647,7 @@
         <div class="summary-grid">
           <div class="stat"><div class="stat-value">${fmtTime(s.duration)}</div><div class="stat-label">duration</div></div>
           <div class="stat"><div class="stat-value">${s.sets}</div><div class="stat-label">sets / rounds</div></div>
-          <div class="stat"><div class="stat-value">${Math.round(s.volume).toLocaleString()}</div><div class="stat-label">lb moved</div></div>
+          <div class="stat"><div class="stat-value">${(units()==="kg"?Math.round(fromLb(s.volume)*10)/10:Math.round(s.volume)).toLocaleString()}</div><div class="stat-label">${units()} moved</div></div>
         </div>
         <button id="done" class="btn primary block" type="button">Back Home</button>
       </section>`;
@@ -614,9 +664,70 @@
       <div class="list">${rows.length?rows.map(r=>`
         <div class="item row">
           <div><strong>${esc(r.exercise.icon)} ${esc(r.exercise.name)}</strong><div class="small">${esc(r.workout)}</div></div>
-          <strong>${r.best?r.best+" lb":"—"}</strong>
+          <strong>${r.best?fmtWeight(r.best):"—"}</strong>
         </div>`).join(""):`<div class="item muted">No exercises are set to track best effort yet.</div>`}</div>`;
     document.getElementById("back").addEventListener("click",()=>{screen="home";render();});
+  }
+
+  function renderSettings(){
+    const theme=state.settings.theme||"dark";
+    const u=units();
+    app.innerHTML=`
+      <div class="topbar"><button id="back" class="btn" type="button">← Home</button><div class="screen-title">Settings</div><span></span></div>
+
+      <section class="card settings-section">
+        <strong>Appearance</strong>
+        <div class="segmented settings-segmented">
+          <button class="btn ${theme==="dark"?"active":""}" data-theme-choice="dark" type="button">Dark</button>
+          <button class="btn ${theme==="light"?"active":""}" data-theme-choice="light" type="button">Light</button>
+          <button class="btn ${theme==="system"?"active":""}" data-theme-choice="system" type="button">System</button>
+        </div>
+      </section>
+
+      <section class="card settings-section">
+        <strong>Weight Units</strong>
+        <div class="segmented settings-segmented two">
+          <button class="btn ${u==="lb"?"active":""}" data-unit-choice="lb" type="button">lb</button>
+          <button class="btn ${u==="kg"?"active":""}" data-unit-choice="kg" type="button">kg</button>
+        </div>
+      </section>
+
+      <section class="card settings-section">
+        <strong>App Version</strong>
+        <button id="syncVersion" class="btn primary block sync-btn" type="button">Sync Latest Version</button>
+        <div id="syncStatus" class="small center sync-status"></div>
+      </section>`;
+
+    document.getElementById("back").addEventListener("click",()=>{screen="home";render();});
+    app.querySelectorAll("[data-theme-choice]").forEach(btn=>btn.addEventListener("click",()=>{
+      state.settings.theme=btn.dataset.themeChoice; saveState(); renderSettings(); applyTheme();
+    }));
+    app.querySelectorAll("[data-unit-choice]").forEach(btn=>btn.addEventListener("click",()=>{
+      state.settings.units=btn.dataset.unitChoice; saveState(); renderSettings();
+    }));
+    document.getElementById("syncVersion").addEventListener("click",syncLatestVersion);
+  }
+
+  async function syncLatestVersion(){
+    const btn=document.getElementById("syncVersion");
+    const status=document.getElementById("syncStatus");
+    if(btn){btn.disabled=true;btn.textContent="Syncing…";}
+    if(status) status.textContent="Checking GitHub for the latest app files…";
+    try{
+      if("serviceWorker" in navigator){
+        const reg=await navigator.serviceWorker.getRegistration();
+        if(reg) await reg.update();
+      }
+      if("caches" in window){
+        const keys=await caches.keys();
+        await Promise.all(keys.filter(k=>k.startsWith("daily-lift-")).map(k=>caches.delete(k)));
+      }
+      if(status) status.textContent="Latest version found. Reloading…";
+      setTimeout(()=>location.reload(),350);
+    }catch{
+      if(status) status.textContent="Could not sync right now. Check your internet connection and try again.";
+      if(btn){btn.disabled=false;btn.textContent="Sync Latest Version";}
+    }
   }
 
   function endSessionClock(){
@@ -645,10 +756,11 @@
 
   window.addEventListener("beforeunload",()=>endSessionClock());
 
+  applyTheme();
   render();
 })();
 
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js", {updateViaCache:"none"}).catch(() => {}));
 }

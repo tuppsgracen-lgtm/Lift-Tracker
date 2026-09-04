@@ -26,6 +26,16 @@ Daily Lift is a local-first workout planner and tracker designed for installatio
 - Offline support via service worker.
 - Data stays in localStorage on the user's device.
 
+## v3 updates
+
+- Optional same-reps checkbox for each rep-based exercise; default remains different reps per set.
+- Optional description for every exercise plus the existing workout description.
+- Rep-specific best effort during workouts and highest overall weight on Best Efforts.
+- Cleaner in-workout exercise board showing only exercise name and completed sets/rounds.
+- Improved workout-selection and weight-entry spacing.
+- Settings screen with Dark/Light/System appearance, lb/kg units, and Sync Latest Version.
+- Sync Latest Version refreshes app caches without clearing saved workout data.
+
 ## Install with GitHub Pages
 
 1. Create a GitHub repository, for example `daily-lift`.
