@@ -1,10 +1,13 @@
-const CACHE = "daily-lift-v4-1";
+const CACHE = "daily-lift-v4-2";
 const ASSETS = [
   "./",
   "./index.html",
   "./app.css",
   "./app.js",
-  "./manifest.json"
+  "./manifest.json",
+  "./icons/icon-180.png",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 self.addEventListener("install", event => {
