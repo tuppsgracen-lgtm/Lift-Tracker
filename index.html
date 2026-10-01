@@ -3,19 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#173424">
+  <meta name="theme-color" content="#151619">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Daily Lift">
+  <meta name="description" content="Simple workout and lift tracking. Log warm-ups and working sets, record your best lifts, and follow your strength progression.">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; manifest-src 'self'; media-src 'none'; frame-src 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; worker-src 'self'; manifest-src 'self'; frame-src 'none';">
   <title>Daily Lift</title>
-  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <main id="app" aria-live="polite"></main>
+  <main id="app" class="app"></main>
+  <div id="toast" class="toast" aria-live="polite" hidden></div>
+  <dialog id="modal" aria-labelledby="modal-title"></dialog>
   <script src="app.js" defer></script>
 </body>
 </html>

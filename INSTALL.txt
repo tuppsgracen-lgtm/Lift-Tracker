@@ -1,0 +1,20 @@
+Daily Lift v7
+
+The ZIP contains the updated app files. To update your existing installation,
+replace its files with these files at the SAME address. Your device-local
+dailyLiftState.v1 data migrates automatically. Keep a copy of your old files.
+
+For a fresh installation, open the published link in Safari, then use
+Share > Add to Home Screen.
+
+A new address stores data separately from an old address. Workouts do not
+automatically transfer between browsers, addresses, or devices. Use Settings
+> Export Backup / Restore when a Daily Lift JSON backup is available.
+
+Warm-up percentages use a recorded max from Best Efforts > Personal Bests.
+Optional percentages are configured beside the planned reps in the editor.
+Weights round to the nearest 5 lb. You can adjust them before completing a set.
+Hold the weight buttons for repeated 5 lb changes.
+
+Personal Bests shows actual weights. Only the graph estimates 1RM for bench,
+back squat, and front squat. Power clean progression uses actual TS weights.
