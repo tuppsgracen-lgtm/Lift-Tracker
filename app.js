@@ -1,6 +1,6 @@
 (() => {
 'use strict';
-const VERSION='7.1.0',KEY='dailyLiftState.v1',KG=2.2046226218;
+const VERSION='7.2.0',KEY='dailyLiftState.v1',KG=2.2046226218;
 const COLORS={bg:'#151619',card:'#202228',accent:'#cef467',secondary:'#ffa45b'};
 const COMPOUNDS=[['bench','Bench'],['back-squat','Back Squat'],['front-squat','Front Squat'],['power-clean','Power Clean']];
 const app=document.getElementById('app'),modal=document.getElementById('modal'),toastEl=document.getElementById('toast');
