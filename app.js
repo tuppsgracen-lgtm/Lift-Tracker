@@ -1,6 +1,6 @@
 (() => {
 'use strict';
-const VERSION='7.0.0',KEY='dailyLiftState.v1',KG=2.2046226218;
+const VERSION='7.1.0',KEY='dailyLiftState.v1',KG=2.2046226218;
 const COLORS={bg:'#151619',card:'#202228',accent:'#cef467',secondary:'#ffa45b'};
 const COMPOUNDS=[['bench','Bench'],['back-squat','Back Squat'],['front-squat','Front Squat'],['power-clean','Power Clean']];
 const app=document.getElementById('app'),modal=document.getElementById('modal'),toastEl=document.getElementById('toast');
@@ -35,7 +35,7 @@ function hideToast(){clearTimeout(toastTimer);toastEl.hidden=true;}
 function openModal(title,html,bind){modal.className='modal';modal.innerHTML=`<h2 id="modal-title">${esc(title)}</h2>${html}`;if(!modal.open)modal.showModal();modal.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeModal);bind?.();}
 function closeModal(){modal.close();modal.innerHTML='';}
 modal.addEventListener('click',e=>{if(e.target===modal){const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();}});
-function nav(){return `<nav class="nav" aria-label="Main navigation">${[['home','Home'],['workout','Workout'],['records','Best Efforts'],['settings','Settings']].map(([k,label])=>`<button data-nav="${k}" aria-current="${(k==='workout'&&['board','active','choose'].includes(screen))||k===screen?'page':'false'}">${label}</button>`).join('')}</nav>`;}
+function nav(){const training=['board','active'].includes(screen);document.body.classList.toggle('has-nav',!training);app.classList.toggle('training',training);if(training)return '';return `<nav class="nav" aria-label="Main navigation">${[['home','Home'],['workout','Workout'],['records','Best Efforts'],['settings','Settings']].map(([k,label])=>`<button data-nav="${k}" aria-current="${k==='workout'&&screen==='choose'||k===screen?'page':'false'}">${label}</button>`).join('')}</nav>`;}
 function render(){theme();graphResize?.disconnect();graphResize=null;const clockHtml=data.session?`<span class="clock" data-session-clock>${clock(elapsed())}</span>`:'';app.innerHTML=`<header class="brandbar"><span class="brand">DAILY LIFT</span>${clockHtml}</header>`;const views={home:home,choose:choose,board:board,active:active,workouts:workouts,builder:editor,records:records,settings:settings,complete:complete};app.insertAdjacentHTML('beforeend',(views[screen]||home)()+nav());bindCommon();({home:bindHome,choose:bindChoose,board:bindBoard,active:bindActive,workouts:bindWorkouts,builder:bindEditor,records:bindRecords,settings:bindSettings,complete:bindComplete}[screen]||(()=>{}))();if(screen==='records'&&recordView==='Progression')drawGraph();}
 function go(next){hideToast();screen=next;render();app.scrollTop=0;}
 function bindCommon(){app.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{if(b.dataset.nav==='workout'){if(data.session)go('board');else go('choose');}else go(b.dataset.nav)});app.querySelectorAll('[data-home]').forEach(b=>b.onclick=()=>go('home'));}
