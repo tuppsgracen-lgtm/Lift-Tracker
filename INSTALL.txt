@@ -1,4 +1,4 @@
-Daily Lift v7
+Daily Lift v7.3 (Pulse theme)
 
 The ZIP contains the updated app files. To update your existing installation,
 replace its files with these files at the SAME address. Your device-local
